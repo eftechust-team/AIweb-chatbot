@@ -59,73 +59,135 @@ h3 {
 	border-radius: 14px;
 	border: 1px solid var(--border);
 	background: linear-gradient(120deg, rgba(255, 122, 61, 0.12), rgba(255, 200, 97, 0.12));
-	font-weight: 600;
+}
+
+.cal-label {
+	font-weight: 700;
+	font-size: 14px;
+	color: var(--text);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	opacity: 0.9;
+}
+
+.cal-value {
 	font-size: 16px;
+	color: var(--muted);
+	font-weight: 500;
+	letter-spacing: 0.3px;
 }
 
-.aligned {
+/* Macronutrient Cards */
+.macros-grid {
 	display: grid;
-	grid-template-columns: 1fr 1fr 1fr;
-	gap: 8px 12px;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 12px;
 	margin: 8px 0 16px 0;
-	padding: 14px;
-	border: 1px solid var(--border);
-	border-radius: 12px;
-	background: #ffffff;
 }
 
-.aligned .head {
+.macro-card {
+	padding: 16px;
+	border-radius: 12px;
+	border: 2px solid transparent;
+	background: #ffffff;
+	transition: all 0.2s ease;
+}
+
+.macro-card.carb {
+	background: linear-gradient(135deg, rgba(33, 150, 243, 0.08), rgba(100, 181, 246, 0.06));
+	border-color: #2196F3;
+}
+
+.macro-card.protein {
+	background: linear-gradient(135deg, rgba(255, 235, 59, 0.08), rgba(255, 245, 157, 0.06));
+	border-color: #FFEB3B;
+}
+
+.macro-card.fat {
+	background: linear-gradient(135deg, rgba(233, 30, 99, 0.08), rgba(240, 98, 146, 0.06));
+	border-color: #E91E63;
+}
+
+.macro-label {
+	font-weight: 700;
+	font-size: 14px;
+	color: var(--text);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 12px;
+	opacity: 0.9;
+}
+
+.macro-values {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.value-pair {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+}
+
+.value-pair .label {
+	font-size: 12px;
+	color: var(--muted);
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.3px;
+}
+
+.value-pair .value {
 	font-weight: 700;
 	font-size: 15px;
 	color: var(--text);
 }
 
-.aligned .needed.more { color: #9a3412; }
-.aligned .needed.ok { color: #065f46; }
+.value-pair .value.needed.ok {
+	color: #065f46;
+	font-weight: 700;
+}
+
+.value-pair .value.needed.more {
+	color: #9a3412;
+	font-weight: 700;
+}
 
 @media (max-width: 768px) {
-	.aligned { 
+	.macros-grid {
 		grid-template-columns: 1fr;
-		gap: 12px;
-		padding: 12px;
+		gap: 14px;
+		margin: 12px 0 18px 0;
 	}
-	
-	.aligned .head { display: none; }
-	
-	.aligned > div {
-		display: grid;
-		grid-template-columns: auto 1fr;
+
+	.macro-card {
+		padding: 14px 16px;
+	}
+
+	.macro-label {
+		font-size: 13px;
+		margin-bottom: 10px;
+	}
+
+	.macro-values {
 		gap: 8px;
-		padding: 10px 12px;
-		background: var(--bg);
-		border-radius: 8px;
-		border: 1px solid var(--border);
 	}
-	
-	/* Hide original text for nutrient names, show only via ::before */
-	.aligned > div:nth-child(4),
-	.aligned > div:nth-child(7),
-	.aligned > div:nth-child(10) {
-		font-size: 0;
+
+	.value-pair .label {
+		font-size: 11px;
 	}
-	
-	.aligned > div:nth-child(4)::before { content: 'Carbohydrate'; font-weight: 600; font-size: 16px; }
-	.aligned > div:nth-child(5)::before { content: 'Target: '; font-weight: 600; color: var(--muted); font-size: 16px; }
-	.aligned > div:nth-child(6)::before { content: 'Needed: '; font-weight: 600; color: var(--muted); font-size: 16px; }
-	
-	.aligned > div:nth-child(7)::before { content: 'Protein'; font-weight: 600; font-size: 16px; }
-	.aligned > div:nth-child(8)::before { content: 'Target: '; font-weight: 600; color: var(--muted); font-size: 16px; }
-	.aligned > div:nth-child(9)::before { content: 'Needed: '; font-weight: 600; color: var(--muted); font-size: 16px; }
-	
-	.aligned > div:nth-child(10)::before { content: 'Fat'; font-weight: 600; font-size: 16px; }
-	.aligned > div:nth-child(11)::before { content: 'Target: '; font-weight: 600; color: var(--muted); font-size: 16px; }
-	.aligned > div:nth-child(12)::before { content: 'Needed: '; font-weight: 600; color: var(--muted); font-size: 16px; }
-	
+
+	.value-pair .value {
+		font-size: 14px;
+	}
+
 	.calorie-banner {
 		font-size: 15px;
 		padding: 14px 16px;
 	}
-	
+
 	.solutions {
 		grid-template-columns: 1fr;
 	}

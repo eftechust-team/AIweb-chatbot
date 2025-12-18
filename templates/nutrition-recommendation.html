@@ -27,25 +27,51 @@
             <h2>Your personalized plan</h2>
 
             <div class="calorie-banner">
-                Daily Calories Needed · <strong>{{recommend_dict.calories}}</strong> kcal
+                <span class="cal-label">Daily Calories Needed:</span> <span class="cal-value">{{recommend_dict.calories}} kcal</span>
             </div>
 
-            <div class="aligned">
-                <div class="head">Macronutrient</div>
-                <div class="head">Target</div>
-                <div class="head">Needed</div>
+            <div class="macros-grid">
+                <div class="macro-card carb">
+                    <div class="macro-label">Carbohydrate</div>
+                    <div class="macro-values">
+                        <div class="value-pair">
+                            <span class="label">Target</span>
+                            <span class="value">{{recommend_dict.carbohydrate_intake}} g</span>
+                        </div>
+                        <div class="value-pair">
+                            <span class="label">Needed</span>
+                            <span class="value needed {{ 'ok' if recommend_dict.carbohydrate_needed <= 0 else 'more' }}">{{recommend_dict.carbohydrate_needed}} g</span>
+                        </div>
+                    </div>
+                </div>
 
-                <div>Carbohydrate</div>
-                <div>{{recommend_dict.carbohydrate_intake}} g</div>
-                <div class="needed {{ 'ok' if recommend_dict.carbohydrate_needed <= 0 else 'more' }}">{{recommend_dict.carbohydrate_needed}} g</div>
+                <div class="macro-card protein">
+                    <div class="macro-label">Protein</div>
+                    <div class="macro-values">
+                        <div class="value-pair">
+                            <span class="label">Target</span>
+                            <span class="value">{{recommend_dict.protein_intake}} g</span>
+                        </div>
+                        <div class="value-pair">
+                            <span class="label">Needed</span>
+                            <span class="value needed {{ 'ok' if recommend_dict.protein_needed <= 0 else 'more' }}">{{recommend_dict.protein_needed}} g</span>
+                        </div>
+                    </div>
+                </div>
 
-                <div>Protein</div>
-                <div>{{recommend_dict.protein_intake}} g</div>
-                <div class="needed {{ 'ok' if recommend_dict.protein_needed <= 0 else 'more' }}">{{recommend_dict.protein_needed}} g</div>
-
-                <div>Fat</div>
-                <div>{{recommend_dict.fat_intake}} g</div>
-                <div class="needed {{ 'ok' if recommend_dict.fat_needed <= 0 else 'more' }}">{{recommend_dict.fat_needed}} g</div>
+                <div class="macro-card fat">
+                    <div class="macro-label">Fat</div>
+                    <div class="macro-values">
+                        <div class="value-pair">
+                            <span class="label">Target</span>
+                            <span class="value">{{recommend_dict.fat_intake}} g</span>
+                        </div>
+                        <div class="value-pair">
+                            <span class="label">Needed</span>
+                            <span class="value needed {{ 'ok' if recommend_dict.fat_needed <= 0 else 'more' }}">{{recommend_dict.fat_needed}} g</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <h3>3D-printable portions</h3>
