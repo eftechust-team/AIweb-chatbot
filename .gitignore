@@ -1,0 +1,36 @@
+app.yaml
+recommender.py
+requirements.txt
+.gcloudignore
+mesh_generator.py
+main_photo.py
+food_full_data.csv
+test.stl
+/FoodSeg
+/FoodSAM/assets
+/FoodSAM/checkpoints
+/FoodSAM/ckpts
+/FoodSAM/configs
+/FoodSAM/images_backup
+/FoodSAM/Output
+/FoodSAM/test
+/data
+/images
+food-ai-455507-e2a9c115814e.json
+test.py
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Local env/config
+.env
+.env.*
+
+# App uploads and generated assets
+static/uploads/

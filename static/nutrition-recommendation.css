@@ -1,0 +1,132 @@
+.solutions {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 14px;
+	margin-top: 14px;
+}
+
+h3 {
+	margin-top: 24px;
+}
+
+.foods {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin: 10px 0;
+}
+
+.portion-main {
+	font-weight: 600;
+	font-size: 16px;
+	color: var(--text);
+}
+
+.portion-meta {
+	color: var(--muted);
+	font-size: 15px;
+}
+
+.supplements {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-top: 8px;
+}
+
+.supplements.column {
+	display: flex;
+	flex-direction: column;
+}
+
+.chip.wide {
+	width: 100%;
+	text-align: left;
+	font-size: 15px;
+	padding: 8px 12px;
+}
+
+.card > .chip:first-child {
+	background: linear-gradient(120deg, rgba(255, 122, 61, 0.16), rgba(255, 200, 97, 0.14));
+	border-color: rgba(255, 122, 61, 0.3);
+	color: var(--text);
+	font-weight: 600;
+}
+
+.calorie-banner {
+	margin: 8px 0 16px 0;
+	padding: 16px 18px;
+	border-radius: 14px;
+	border: 1px solid var(--border);
+	background: linear-gradient(120deg, rgba(255, 122, 61, 0.12), rgba(255, 200, 97, 0.12));
+	font-weight: 600;
+	font-size: 16px;
+}
+
+.aligned {
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr;
+	gap: 8px 12px;
+	margin: 8px 0 16px 0;
+	padding: 14px;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: #ffffff;
+}
+
+.aligned .head {
+	font-weight: 700;
+	font-size: 15px;
+	color: var(--text);
+}
+
+.aligned .needed.more { color: #9a3412; }
+.aligned .needed.ok { color: #065f46; }
+
+@media (max-width: 768px) {
+	.aligned { 
+		grid-template-columns: 1fr;
+		gap: 12px;
+		padding: 12px;
+	}
+	
+	.aligned .head { display: none; }
+	
+	.aligned > div {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 8px;
+		padding: 10px 12px;
+		background: var(--bg);
+		border-radius: 8px;
+		border: 1px solid var(--border);
+	}
+	
+	/* Hide original text for nutrient names, show only via ::before */
+	.aligned > div:nth-child(4),
+	.aligned > div:nth-child(7),
+	.aligned > div:nth-child(10) {
+		font-size: 0;
+	}
+	
+	.aligned > div:nth-child(4)::before { content: 'Carbohydrate'; font-weight: 600; font-size: 16px; }
+	.aligned > div:nth-child(5)::before { content: 'Target: '; font-weight: 600; color: var(--muted); font-size: 16px; }
+	.aligned > div:nth-child(6)::before { content: 'Needed: '; font-weight: 600; color: var(--muted); font-size: 16px; }
+	
+	.aligned > div:nth-child(7)::before { content: 'Protein'; font-weight: 600; font-size: 16px; }
+	.aligned > div:nth-child(8)::before { content: 'Target: '; font-weight: 600; color: var(--muted); font-size: 16px; }
+	.aligned > div:nth-child(9)::before { content: 'Needed: '; font-weight: 600; color: var(--muted); font-size: 16px; }
+	
+	.aligned > div:nth-child(10)::before { content: 'Fat'; font-weight: 600; font-size: 16px; }
+	.aligned > div:nth-child(11)::before { content: 'Target: '; font-weight: 600; color: var(--muted); font-size: 16px; }
+	.aligned > div:nth-child(12)::before { content: 'Needed: '; font-weight: 600; color: var(--muted); font-size: 16px; }
+	
+	.calorie-banner {
+		font-size: 15px;
+		padding: 14px 16px;
+	}
+	
+	.solutions {
+		grid-template-columns: 1fr;
+	}
+}

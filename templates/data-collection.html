@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/base.css">
+    <link rel="stylesheet" href="/static/data-collection.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELEVATEFOODS</title>
+</head>
+
+<body>
+    <header>
+        <div class="brand">ELEVATEFOODS <span class="badge">Beta</span></div>
+        <div class="steps">
+            <div class="step active">1 · Data</div>
+            <div class="step">2 · Upload</div>
+            <div class="step">3 · Plan</div>
+        </div>
+    </header>
+
+    <main>
+        <section class="panel">
+            <h2>Personal Data</h2>
+            <p>Enter your baseline so we can personalize your nutrition and print-ready portions.</p>
+
+            <div class="actions">
+                <button type="button" id="fill-sample" class="secondary">Fill Sample</button>
+            </div>
+
+            <form method="POST" id="data-form">
+                <div class="form-grid groups">
+                    <div class="group">
+                        <div class="group-body">
+                            <div class="field">
+                                <label>Gender</label>
+                                <div class="radio-group">
+                                    <label class="radio-pill"><input type="radio" name="gender" value="0" required> Male</label>
+                                    <label class="radio-pill"><input type="radio" name="gender" value="1"> Female</label>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label>Age</label>
+                                <input type="number" name="age" step="1" placeholder="Years" required>
+                            </div>
+
+                            <div class="field">
+                                <label>Height</label>
+                                <input type="number" name="height" step="0.1" placeholder="cm" required>
+                            </div>
+
+                            <div class="field">
+                                <label>Weight</label>
+                                <input type="number" name="weight" step="0.1" placeholder="kg" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="group">
+                        <div class="group-body">
+                            <div class="field">
+                                <label>Carbohydrate Intake</label>
+                                <input type="number" name="carbohydrate" step="0.1" placeholder="grams per day" required>
+                            </div>
+
+                            <div class="field">
+                                <label>Protein Intake</label>
+                                <input type="number" name="protein" step="0.1" placeholder="grams per day" required>
+                            </div>
+
+                            <div class="field">
+                                <label>Fat Intake</label>
+                                <input type="number" name="fat" step="0.1" placeholder="grams per day" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="group">
+                        <div class="group-body">
+                            <div class="field">
+                                <label>Activity Level</label>
+                                <div class="radio-group">
+                                    <label class="radio-pill"><input type="radio" name="activity" value="0" required> Sedentary</label>
+                                    <label class="radio-pill"><input type="radio" name="activity" value="1"> Low active</label>
+                                    <label class="radio-pill"><input type="radio" name="activity" value="2"> Active</label>
+                                    <label class="radio-pill"><input type="radio" name="activity" value="3"> Very active</label>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label>Diet Plan</label>
+                                <div class="radio-group">
+                                    <label class="radio-pill"><input type="radio" name="diet" value="0" required> Balanced</label>
+                                    <label class="radio-pill"><input type="radio" name="diet" value="1"> Low Fat</label>
+                                    <label class="radio-pill"><input type="radio" name="diet" value="2"> Low Carb</label>
+                                    <label class="radio-pill"><input type="radio" name="diet" value="3"> High Protein</label>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label>Protein Preference</label>
+                                <div class="radio-group">
+                                    <label class="radio-pill"><input type="radio" name="preference" value="0" required> Meat-based</label>
+                                    <label class="radio-pill"><input type="radio" name="preference" value="1"> Plant-based</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <input type="submit" name="submit" value="Save & Continue">
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('data-form');
+        const steps = document.querySelectorAll('.step');
+        const sampleBtn = document.getElementById('fill-sample');
+        
+        // Check if form is completely filled and highlight step 2
+        function checkFormCompletion() {
+            if (form.checkValidity()) {
+                steps.forEach((step, i) => {
+                    step.classList.toggle('active', i === 1); // Highlight step 2
+                });
+            } else {
+                steps.forEach((step, i) => {
+                    step.classList.toggle('active', i === 0); // Highlight step 1
+                });
+            }
+        }
+        
+        // Monitor all inputs for changes
+        form.querySelectorAll('input, select').forEach(input => {
+            input.addEventListener('change', checkFormCompletion);
+            input.addEventListener('input', checkFormCompletion);
+        });
+        
+        form.addEventListener('submit', function(e) {
+            if (!form.checkValidity()) {
+                e.preventDefault();
+                
+                // Remove previous highlights
+                form.querySelectorAll('.field.invalid-highlight').forEach(el => el.classList.remove('invalid-highlight'));
+                
+                // Highlight all invalid fields
+                const allInvalid = form.querySelectorAll(':invalid');
+                allInvalid.forEach(invalid => {
+                    const field = invalid.closest('.field');
+                    if (field) {
+                        field.classList.add('invalid-highlight');
+                    }
+                });
+                
+                // Scroll to first invalid element based on its group
+                const firstInvalid = form.querySelector(':invalid');
+                if (firstInvalid) {
+                    const field = firstInvalid.closest('.field');
+                    const group = field.closest('.group');
+                    const allGroups = form.querySelectorAll('.group');
+                    const groupIndex = Array.from(allGroups).indexOf(group);
+                    const totalGroups = allGroups.length;
+                    
+                    // Determine scroll position based on group position
+                    let block = 'start'; // top group
+                    if (groupIndex === Math.floor(totalGroups / 2)) {
+                        block = 'center'; // middle group
+                    } else if (groupIndex === totalGroups - 1) {
+                        block = 'end'; // bottom group
+                    }
+                    
+                    // Scroll to the group
+                    group.scrollIntoView({behavior: 'smooth', block: block});
+                    
+                    // Focus after scroll
+                    setTimeout(() => {
+                        try { firstInvalid.focus(); } catch (_) {}
+                    }, 500);
+                }
+            }
+        });
+
+        // Helper functions to set values
+        function setRadio(name, value) {
+            const el = form.querySelector(`input[name="${name}"][value="${value}"]`);
+            if (el) {
+                el.checked = true;
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        function setInput(name, value) {
+            const el = form.querySelector(`input[name="${name}"]`);
+            if (el) {
+                el.value = value;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+
+        // Fill sample values on button click
+        if (sampleBtn) {
+            sampleBtn.addEventListener('click', function() {
+                // Gender: Female (value=1)
+                setRadio('gender', '1');
+                // Age, Height (cm), Weight (kg)
+                setInput('age', 30);
+                setInput('height', 163);
+                setInput('weight', 65);
+                // Intake (grams per day)
+                setInput('carbohydrate', 303.1);
+                setInput('protein', 125.4);
+                setInput('fat', 46.8);
+                // Activity: Active (value=2)
+                setRadio('activity', '2');
+                // Diet Plan: Low Fat (value=1)
+                setRadio('diet', '1');
+                // Protein Preference: Plant-based (value=1)
+                setRadio('preference', '1');
+
+                // Update step highlighting
+                checkFormCompletion();
+            });
+        }
+    });
+    </script>
+</body>
+</html>

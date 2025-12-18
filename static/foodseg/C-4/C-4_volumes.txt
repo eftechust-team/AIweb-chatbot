@@ -1,0 +1,19 @@
+Volume Estimation Results
+========================
+
+Reference Coin (1 Yuan):
+Status: Detected
+Standard Measurements:
+- Area: 0.28 cm²
+- Height: 2.00 mm
+- Volume: 0.06 cm³
+Detection Details:
+- Pixel Radius: 30 pixels
+- Scale Factor: 0.1000 mm/pixel
+
+Food Measurements:
+
+food_10:
+- Area: 216.47 cm²
+- Depth: 97.07 mm
+- Volume: 2101.38 cm³

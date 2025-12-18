@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/base.css">
+    <link rel="stylesheet" href="/static/upload-image.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELEVATEFOODS</title>
+</head>
+
+<body>
+    <header>
+        <div class="brand">ELEVATEFOODS <span class="badge">Beta</span></div>
+        <div class="steps">
+            <div class="step">1 · Data</div>
+            <div class="step active">2 · Upload</div>
+            <div class="step">3 · Plan</div>
+        </div>
+    </header>
+
+    <main>
+        <section class="panel">
+            <h2>Upload your food image</h2>
+            <p>High contrast, well-lit top-down photos work best. Accepted formats: JPG, PNG.</p>
+
+            <form method="post" enctype="multipart/form-data" class="upload-box" id="upload-form">
+                <div class="dropzone">
+                    <p class="muted">Drop an image here or click to browse</p>
+                    <input type="file" name="upload-image" accept="image/*" required>
+                </div>
+                <div class="actions">
+                    <input type="submit" value="Analyze Image">
+                </div>
+            </form>
+        </section>
+    </main>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('upload-form');
+        const fileInput = form.querySelector('input[type="file"]');
+        
+        form.addEventListener('submit', function(e) {
+            if (!fileInput.files || fileInput.files.length === 0) {
+                e.preventDefault();
+                alert('Please select an image file to analyze.');
+                return;
+            }
+        });
+    });
+    </script>
+</body>
+</html>

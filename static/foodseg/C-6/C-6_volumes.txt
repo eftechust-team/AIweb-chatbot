@@ -1,0 +1,24 @@
+Volume Estimation Results
+========================
+
+Food Measurements:
+
+food_44:
+- Area: 490.87 cm²
+- Depth: 26.47 mm
+- Volume: 1299.54 cm³
+
+food_69:
+- Area: 263.95 cm²
+- Depth: 19.08 mm
+- Volume: 503.53 cm³
+
+food_73:
+- Area: 344.46 cm²
+- Depth: 15.59 mm
+- Volume: 536.85 cm³
+
+food_103:
+- Area: 16.65 cm²
+- Depth: 1.24 mm
+- Volume: 2.06 cm³

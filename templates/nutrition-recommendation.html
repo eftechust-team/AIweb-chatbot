@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/base.css">
+    <link rel="stylesheet" href="/static/nutrition-recommendation.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELEVATEFOODS</title>
+</head>
+
+<body>
+    <header>
+        <div class="brand">ELEVATEFOODS <span class="badge">Beta</span></div>
+        <div class="steps">
+            <div class="step">1 · Data</div>
+            <div class="step">2 · Upload</div>
+            <div class="step active">3 · Plan</div>
+        </div>
+    </header>
+
+    <main>
+        <section class="panel">
+            <h2>Your personalized plan</h2>
+
+            <div class="calorie-banner">
+                Daily Calories Needed · <strong>{{recommend_dict.calories}}</strong> kcal
+            </div>
+
+            <div class="aligned">
+                <div class="head">Macronutrient</div>
+                <div class="head">Target</div>
+                <div class="head">Needed</div>
+
+                <div>Carbohydrate</div>
+                <div>{{recommend_dict.carbohydrate_intake}} g</div>
+                <div class="needed {{ 'ok' if recommend_dict.carbohydrate_needed <= 0 else 'more' }}">{{recommend_dict.carbohydrate_needed}} g</div>
+
+                <div>Protein</div>
+                <div>{{recommend_dict.protein_intake}} g</div>
+                <div class="needed {{ 'ok' if recommend_dict.protein_needed <= 0 else 'more' }}">{{recommend_dict.protein_needed}} g</div>
+
+                <div>Fat</div>
+                <div>{{recommend_dict.fat_intake}} g</div>
+                <div class="needed {{ 'ok' if recommend_dict.fat_needed <= 0 else 'more' }}">{{recommend_dict.fat_needed}} g</div>
+            </div>
+
+            <h3>3D-printable portions</h3>
+            {% if recommend_dict.results | length > 0 %}
+                <div class="solutions">
+                    {% for i in range(recommend_dict.results | length) %}
+                        <div class="card">
+                            <div class="chip">Solution #{{i + 1}}</div>
+                            <div class="foods">
+                                {% for food_item in recommend_dict.results[i][0] %}
+                                    <div class="portion">
+                                        <div class="portion-main">{{food_item.name}} · {{food_item.gram}} g</div>
+                                        <div class="portion-meta">Size: {{food_item.x}}mm × {{food_item.y}}mm × {{food_item.z}}mm</div>
+                                        <a href="{{ url_for('download', filename=food_item.mesh) }}" style="text-decoration: underline;">Download model</a>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <div class="supplements column">
+                                <span class="chip wide">Carb supplement: {{recommend_dict.results[i][1]}} g</span>
+                                <span class="chip wide">Protein supplement: {{recommend_dict.results[i][2]}} g</span>
+                                <span class="chip wide">Fat supplement: {{recommend_dict.results[i][3]}} g</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="card">
+                    <p>No printable portions needed - your current intake meets or exceeds your nutritional targets! 🎉</p>
+                    <p>Try adjusting your intake values or dietary preferences to generate 3D-printable food portions.</p>
+                </div>
+            {% endif %}
+
+            <form method="POST" class="actions">
+                <input type="submit" name="refresh" value="Refresh Plan">
+            </form>
+        </section>
+    </main>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/base.css">
+    <link rel="stylesheet" href="/static/nutrition-calculation.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELEVATEFOODS</title>
+</head>
+
+<body>
+    <header>
+        <div class="brand">ELEVATEFOODS <span class="badge">Beta</span></div>
+        <div class="steps">
+            <div class="step">1 · Data</div>
+            <div class="step">2 · Upload</div>
+            <div class="step active">3 · Plan</div>
+        </div>
+    </header>
+
+    <main>
+        <section class="panel">
+            <h2>Nutrition Analysis</h2>
+            <p>Original image vs. segmentation, plus the detected macronutrients.</p>
+
+            <div class="gallery">
+                <div class="card">
+                    <p class="chip">Uploaded</p>
+                    <img class="preview" src={{results.image_origin}} alt="Original" />
+                </div>
+                <div class="card">
+                    <p class="chip">Segmented</p>
+                    <img class="preview" src={{results.image_seglab}} alt="Segmented" />
+                </div>
+            </div>
+
+            <div class="metrics">
+                <div class="metric">Carbohydrate: {{results.image_report.carbs}} g</div>
+                <div class="metric">Protein: {{results.image_report.protein}} g</div>
+                <div class="metric">Fat: {{results.image_report.fat}} g</div>
+            </div>
+
+            <div class="food-list">
+                {% for food_item in results.image_report.food_items %}
+                    <div class="card">
+                        <h4>{{food_item.food_name}}</h4>
+                        <p>Weight: {{food_item.weight_g}} g</p>
+                        <p>Carbohydrate: {{food_item.carbs}} g</p>
+                        <p>Protein: {{food_item.protein}} g</p>
+                        <p>Fat: {{food_item.fat}} g</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <form method="POST" class="actions">
+                <input type="submit" name="next" value="See Recommendations">
+            </form>
+        </section>
+    </main>
+</body>
+</html>
