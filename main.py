@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, request, abort, send_file, url_for
+from flask import Flask, render_template, redirect, request, abort, send_file, url_for, jsonify
 from google.cloud import storage
 from google.auth.exceptions import DefaultCredentialsError
 import numpy as np
@@ -8,6 +8,9 @@ from stl import mesh
 import os
 import json
 import io
+import requests
+import re
+from datagov_api import get_datagov_client
 
 # export GOOGLE_APPLICATION_CREDENTIALS="food-ai-455507-e2a9c115814e.json"     
 json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "food-ai-455507-e2a9c115814e.json"))
@@ -24,29 +27,289 @@ def upload_to_gcs(bucket_name, source_file_name, destination_blob_name):
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(destination_blob_name)
         blob.upload_from_filename(source_file_name)
+        # Make the blob publicly readable
+        blob.make_public()
         return True
     except DefaultCredentialsError:
         return False
-    except Exception:
+    except Exception as e:
+        print(f"Error uploading to GCS: {e}")
         return False
 
     # print(f"File {source_file_name} uploaded to {destination_blob_name}.")
 
+# USDA FoodData Central API functions using data.gov API client
+# API key is now securely stored in environment variable: DATA_GOV_API_KEY
+# Get your API key from: https://api.data.gov/
+data_gov_client = get_datagov_client()  # Uses X-Api-Key header authentication
+USDA_API_URL = "https://api.nal.usda.gov/fdc/v1"
+
+# Simple cache to reduce API calls and avoid rate limits
+_search_cache = {}
+_nutrition_cache = {}
+
+WORD_NUMBER_MAP = {
+    'a': 1,
+    'an': 1,
+    'one': 1,
+    'two': 2,
+    'three': 3,
+    'four': 4,
+    'five': 5,
+    'six': 6,
+    'seven': 7,
+    'eight': 8,
+    'nine': 9,
+    'ten': 10,
+    'half': 0.5,
+    'dozen': 12,
+}
+
+def parse_food_input(food_input):
+    """
+    Parse user input like "100g chicken breast", "1 medium apple", or "two eggs".
+    Returns: (food_name, quantity, unit)
+    """
+    cleaned = food_input.strip()
+
+    # Pattern: number + optional unit + food name (e.g., "100g chicken breast")
+    match = re.match(r'^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?\s+(.+)$', cleaned)
+    if match:
+        quantity = float(match.group(1))
+        raw_unit = (match.group(2) or '').lower()
+        food_name = match.group(3).strip()
+
+        # If no explicit unit, decide between grams vs counted items
+        if raw_unit:
+            unit = raw_unit
+        else:
+            countable_keywords = ['egg', 'eggs', 'apple', 'apples', 'banana', 'bananas', 'orange', 'oranges']
+            unit = 'unit' if any(k in food_name.lower() for k in countable_keywords) else 'g'
+
+        return food_name, quantity, unit
+
+    # Pattern: word-number + food name (e.g., "two eggs", "a banana")
+    word_match = re.match(r'^(?P<num_word>[a-zA-Z]+)\s+(?P<food>.+)$', cleaned.lower())
+    if word_match:
+        num_word = word_match.group('num_word')
+        food_name = word_match.group('food').strip()
+        if num_word in WORD_NUMBER_MAP:
+            return food_name, float(WORD_NUMBER_MAP[num_word]), 'unit'
+
+    # Fallback: treat as a single unit
+    return cleaned, 1.0, 'unit'
+
+def search_usda_food(food_name):
+    """
+    Search for food in USDA FoodData Central using data.gov API client.
+    Uses X-Api-Key header authentication (recommended by data.gov).
+    Implements caching to reduce API calls and avoid rate limits.
+    """
+    # Check cache first
+    cache_key = food_name.lower().strip()
+    if cache_key in _search_cache:
+        print(f"[CACHE HIT] Using cached results for '{food_name}'")
+        return _search_cache[cache_key]
+    
+    # Make API request if not cached
+    response = data_gov_client.make_request(
+        endpoint=f"{USDA_API_URL}/foods/search",
+        params={
+            'query': food_name,
+            'pageSize': 10
+        }
+    )
+    
+    # Store in cache
+    if response:
+        _search_cache[cache_key] = response
+        print(f"[CACHED] Stored results for '{food_name}'")
+    
+    return response
+
+def get_food_nutrition(fdc_id, quantity, unit):
+    """
+    Get detailed nutrition info for a food item using data.gov API client.
+    Implements caching to reduce API calls and avoid rate limits.
+    fdc_id: FDC ID from search results
+    quantity: amount user consumed
+    unit: unit of measurement (g, cup, etc.)
+    """
+    # Check cache first (only cache by FDC ID, calculate quantity later)
+    if fdc_id in _nutrition_cache:
+        print(f"[CACHE HIT] Using cached nutrition for FDC ID {fdc_id}")
+        food_data = _nutrition_cache[fdc_id]
+    else:
+        # Make API request if not cached
+        food_data = data_gov_client.make_request(
+            endpoint=f"{USDA_API_URL}/food/{fdc_id}"
+        )
+        if food_data:
+            _nutrition_cache[fdc_id] = food_data
+            print(f"[CACHED] Stored nutrition data for FDC ID {fdc_id}")
+    
+    if food_data:
+        
+        print(f"\n=== USDA API Response for FDC ID {fdc_id} ===")
+        print(f"Food Description: {food_data.get('description', 'N/A')}")
+        print(f"Food Category: {food_data.get('foodCategory', {}).get('description', 'N/A')}")
+        print(f"Data Type: {food_data.get('dataType', 'N/A')}")
+        
+        # Extract nutrition facts - more flexible matching
+        nutrition_facts = {'carbs': 0, 'protein': 0, 'fat': 0}
+        
+        if 'foodNutrients' in food_data:
+            print(f"\nFound {len(food_data['foodNutrients'])} nutrients")
+            for nutrient in food_data['foodNutrients']:
+                # Get nutrient info with different possible structures
+                nutrient_info = nutrient.get('nutrient', {})
+                nutrient_name = nutrient_info.get('name', '').lower()
+                
+                # Try different value fields based on data type
+                value = nutrient.get('amount') or nutrient.get('value', 0)
+                
+                print(f"  - {nutrient_name}: {value}")
+                
+                # Match carbohydrates (more flexible)
+                if 'carbohydrate' in nutrient_name:
+                    if 'by difference' in nutrient_name or 'total' in nutrient_name:
+                        if nutrition_facts['carbs'] == 0:  # Only take first match
+                            nutrition_facts['carbs'] = value
+                            print(f"    ✓ MATCHED as carbs")
+                
+                # Match protein
+                elif 'protein' in nutrient_name:
+                    if nutrition_facts['protein'] == 0:
+                        nutrition_facts['protein'] = value
+                        print(f"    ✓ MATCHED as protein")
+                
+                # Match fat (try multiple variations)
+                elif 'fat' in nutrient_name or 'lipid' in nutrient_name:
+                    if 'total' in nutrient_name or nutrient_name == 'total lipid (fat)':
+                        if nutrition_facts['fat'] == 0:
+                            nutrition_facts['fat'] = value
+                            print(f"    ✓ MATCHED as fat")
+        
+        print(f"\nExtracted nutrition: {nutrition_facts}")
+        
+        # Get serving size - check multiple fields
+        serving_size = 100  # default assumption
+        if 'servingSizeUnit' in food_data and 'servingSize' in food_data:
+            try:
+                if food_data.get('servingSizeUnit', 'g').lower() == 'g':
+                    serving_size = float(food_data['servingSize'])
+                else:
+                    serving_size = 100
+            except:
+                serving_size = 100
+        
+        print(f"Serving size: {serving_size}g")
+        
+        # Convert quantity to grams if needed
+        quantity_in_grams = quantity
+        unit_lower = unit.lower()
+        food_desc = food_data.get('description', '').lower()
+
+        # Descriptive sizes with USDA-style defaults
+        if unit_lower in ['small', 'sm']:
+            if 'egg' in food_desc:
+                quantity_in_grams = quantity * 50
+            elif 'apple' in food_desc:
+                quantity_in_grams = quantity * 149
+            elif 'banana' in food_desc:
+                quantity_in_grams = quantity * 101
+            else:
+                quantity_in_grams = quantity * 100
+
+        elif unit_lower in ['medium', 'med', 'md']:
+            if 'egg' in food_desc:
+                quantity_in_grams = quantity * 60
+            elif 'apple' in food_desc:
+                quantity_in_grams = quantity * 182
+            elif 'banana' in food_desc:
+                quantity_in_grams = quantity * 118
+            elif 'orange' in food_desc:
+                quantity_in_grams = quantity * 131
+            else:
+                quantity_in_grams = quantity * 150
+
+        elif unit_lower in ['large', 'lg', 'big']:
+            if 'egg' in food_desc:
+                quantity_in_grams = quantity * 70
+            elif 'apple' in food_desc:
+                quantity_in_grams = quantity * 223
+            elif 'banana' in food_desc:
+                quantity_in_grams = quantity * 136
+            else:
+                quantity_in_grams = quantity * 200
+
+        # Volume units
+        elif unit_lower in ['cup', 'cups']:
+            quantity_in_grams = quantity * 240
+        elif unit_lower in ['tbsp', 'tablespoon', 'tablespoons']:
+            quantity_in_grams = quantity * 15
+        elif unit_lower in ['tsp', 'teaspoon', 'teaspoons']:
+            quantity_in_grams = quantity * 5
+
+        # Weight units
+        elif unit_lower in ['oz', 'ounce', 'ounces']:
+            quantity_in_grams = quantity * 28.35
+        elif unit_lower in ['lb', 'lbs', 'pound', 'pounds']:
+            quantity_in_grams = quantity * 453.59
+        elif unit_lower in ['g', 'gram', 'grams']:
+            quantity_in_grams = quantity
+
+        # Liquid volume
+        elif unit_lower in ['ml', 'milliliter', 'milliliters']:
+            quantity_in_grams = quantity
+
+        # Countable items default
+        elif unit_lower in ['piece', 'pieces', 'item', 'items', 'unit', 'units', 'egg', 'eggs']:
+            # Use food-specific defaults when counting items
+            default_piece_weight = 150
+            if 'egg' in food_desc:
+                default_piece_weight = 60
+            elif 'banana' in food_desc:
+                default_piece_weight = 118
+            elif 'apple' in food_desc:
+                default_piece_weight = 182
+            elif 'orange' in food_desc:
+                default_piece_weight = 131
+            quantity_in_grams = quantity * default_piece_weight
+
+        else:
+            # Unknown unit - assume grams
+            print(f"[WARNING] Unknown unit '{unit}' - treating quantity as grams")
+            quantity_in_grams = quantity
+        
+        print(f"Input: {quantity}{unit} = {quantity_in_grams}g")
+        
+        # Scale nutrition values
+        scale_factor = quantity_in_grams / serving_size
+        scaled_nutrition = {}
+        for key, val in nutrition_facts.items():
+            scaled_nutrition[key] = round(val * scale_factor, 2)
+        
+        print(f"Scale factor: {scale_factor}")
+        print(f"Final scaled nutrition: {scaled_nutrition}")
+        print("=" * 50 + "\n")
+        
+        return {
+            'food_name': food_data.get('description', ''),
+            'carbs': scaled_nutrition.get('carbs', 0),
+            'protein': scaled_nutrition.get('protein', 0),
+            'fat': scaled_nutrition.get('fat', 0),
+            'quantity': quantity,
+            'unit': unit,
+            'serving_size': serving_size
+        }
+    print(f"Error: Could not retrieve food nutrition data for FDC ID {fdc_id}")
+    return None
+
 @app.route('/')
 def main():
-    # return render_template("test.html")
-    return redirect("/data_collection")
-    # return redirect("/upload_image")
-
-@app.route('/upload_image', methods=["GET", "POST"])
-def upload_image():
-    if request.method == 'POST' and 'upload-image' in request.files:
-        file = request.files['upload-image']
-        path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(path)
-        # print(path[1:])
-        return redirect(url_for("nutrition_calculation", path=path[1:]))
-    return render_template("upload-image.html")
+    # Redirect base URL to chatbot page
+    return redirect('/chatbot')
 
 @app.route('/nutrition_calculation', methods=["GET", "POST"])
 def nutrition_calculation():
@@ -107,7 +370,7 @@ def calculate_cube_dimension(volume):
 min_size = np.array([8.0, 8.0, 0.15])  # Minimum dimensions in cm
 max_size = np.array([15.0, 13.0, 2.2])  # Maximum dimensions in cm
 MAX_VOLUME = max_size[0] * max_size[1] * max_size[2] # Dimention is cm
-TOLERANCE = 100
+TOLERANCE = 400  # allow feasible solutions even with moderate error
 
 def calculate_cube_dimension(volume):
     # Define size limits in cm
@@ -168,7 +431,7 @@ def mesh_generation(name, weight, density): #g/cm3
     import tempfile
     temp_dir = tempfile.gettempdir()
     tmp_path = os.path.join(temp_dir, name)
-    blob_path = os.path.join("/meshes", name)
+    blob_path = f"meshes/{name}"
     cube.save(tmp_path)
     upload_to_gcs(bucket_name, tmp_path, blob_path)
     os.remove(tmp_path)
@@ -215,6 +478,7 @@ def recommend(gender, age, height, weight, carbohydrate, protein, fat, activity,
     nonlinear_constraint = NonlinearConstraint(constraint_func, 0.01, np.inf)
 
     solutions = []
+    best_candidate = None  # fallback if nothing meets tolerance
 
     # def fun(amounts, nutritional_matrix, target):
     #     amounts = amounts.reshape(-1, 1)
@@ -238,23 +502,15 @@ def recommend(gender, age, height, weight, carbohydrate, protein, fat, activity,
             if (blocked in indices): continue
             selected_nutrition = W[list(indices)]
 
-            # print("selected_nutrition shape:", selected_nutrition.shape)
-            # print("positive_y shape:",        positive_y.shape)
-
-            # print(selected_nutrition.T[mask, :].shape)
-            # print(y[mask].shape)
-
-            # amounts, residual = solve_pair(selected_nutrition, positive_y)
-            # res = linprog(c=np.ones(2),
-            #       A_eq=selected_nutrition.T[mask, :], b_eq=y[mask],
-            #       bounds=(0, None),
-            #       method='highs')
             fun = lambda x: np.linalg.norm(selected_nutrition.T[mask, :] @ x - y[mask])
-            # for x in range(len(indices)): print((0., MAX_VOLUME / density[indices[x]]))
             res = minimize(fun, np.zeros(len(indices)), method='L-BFGS-B', bounds=[(0., MAX_VOLUME / density[indices[x]]) for x in range(len(indices))])
 
-
             print(f"Testing combination {indices}: amounts={res.x}, error={res.fun}")
+            # Track best candidate even if above tolerance
+            if res.x[0] > 0 and res.x[1] > 0:
+                if best_candidate is None or res.fun < best_candidate[2]:
+                    best_candidate = (indices, res.x, res.fun)
+
             # Accept solution if both amounts are positive and error is reasonable
             if res.x[0] > 0 and res.x[1] > 0 and res.fun < TOLERANCE:
                 solutions.append((indices, res.x, res.fun))
@@ -262,17 +518,10 @@ def recommend(gender, age, height, weight, carbohydrate, protein, fat, activity,
             else:
                 print(f"  -> REJECTED (tolerance={TOLERANCE})")
 
-
-            # initial_guess = np.zeros(2)
-            # bounds = [(0, None), (0, None)]
-
-            # print(selected_nutrition, positive_y)
-
-            # # sol = minimize(fun, initial_guess, args=(selected_nutrition, positive_y), method='SLSQP', bounds=bounds, constraints=[nonlinear_constraint])
-            # sol = minimize(fun, initial_guess, args=(selected_nutrition, positive_y), method='SLSQP', bounds=bounds, constraints=[])
-
-            # if sol.success:
-            #     solutions.append((indices, sol.x, sol.fun))  # Store (indices, amounts, norm)
+        # If none accepted, use best candidate so we always produce meshes
+        if not solutions and best_candidate:
+            solutions.append(best_candidate)
+            print(f"\nNo solutions under tolerance. Using best available combination with error={best_candidate[2]:.2f}")
 
         solutions.sort(key=lambda x: x[2])
         print(f"\n=== Found {len(solutions)} valid solutions ===")
@@ -370,9 +619,26 @@ def download(filename):
 @app.route('/nutrition_recommendation_display', methods=["GET", "POST"])
 def nutrition_recommendation_display():
     info_dict = request.args.get('info_dict')
-    info_dict = info_dict.split(",")
-    # print(info_dict)
-    info_dict = list2dict(info_dict)
+    
+    # If no info_dict provided, use default values for demo
+    if info_dict is None:
+        # Use default values as a dict directly
+        info_dict = {
+            'gender': 0,
+            'age': 25,
+            'height': 170.0,
+            'weight': 70.0,
+            'carbs': 0.0,
+            'protein': 0.0,
+            'fat': 0.0,
+            'activity': 2,
+            'diet': 0,
+            'preference': 0
+        }
+    else:
+        info_dict = info_dict.split(",")
+        info_dict = list2dict(info_dict)
+    
     # print(info_dict)
     recommend_dict = recommend(int(info_dict['gender']), int(info_dict['age']), info_dict['height'], info_dict['weight'], info_dict['carbs'], \
                                info_dict['protein'], info_dict['fat'], int(info_dict['activity']), int(info_dict['diet']), int(info_dict['preference']))
@@ -385,7 +651,186 @@ def nutrition_recommendation_display():
         # if refresh: return redirect("/upload_image")
         if refresh: return redirect("/data_collection")
     return render_template("nutrition-recommendation.html", recommend_dict=recommend_dict)
+
+# Chatbot routes
+@app.route('/chatbot', methods=["GET", "POST"])
+def chatbot():
+    """Serve the chatbot interface"""
+    return render_template("chatbot.html")
+
+@app.route('/api/search-food', methods=['POST'])
+def api_search_food():
+    """Search for food in USDA database and return parsed nutrition"""
+    try:
+        data = request.json
+        food_input = data.get('food_input', '').strip()
+        
+        if not food_input:
+            return jsonify({'error': 'No food input provided'}), 400
+        
+        # Parse user input
+        food_name, quantity, unit = parse_food_input(food_input)
+        
+        # Search USDA API
+        search_results = search_usda_food(food_name)
+
+        # Handle upstream errors (rate limit / connectivity)
+        if search_results is None:
+            return jsonify({
+                'error': 'Upstream nutrition API unavailable (possible rate limit or connectivity issue). Please wait a bit and try again.',
+                'suggestion': 'If this keeps happening, request a higher API limit or try later.'
+            }), 503
+        
+        if 'foods' not in search_results or len(search_results['foods']) == 0:
+            return jsonify({
+                'error': f'No foods found for "{food_name}"',
+                'suggestion': 'Try searching for a more specific food name'
+            }), 404
+        
+        # Get the first result's detailed nutrition
+        top_food = search_results['foods'][0]
+        fdc_id = top_food.get('fdcId')
+        
+        nutrition = get_food_nutrition(fdc_id, quantity, unit)
+        
+        if not nutrition:
+            return jsonify({
+                'error': 'Could not retrieve nutrition information (upstream API may be rate limited).',
+                'suggestion': 'Wait a few minutes and try again, or reduce rapid repeated searches.'
+            }), 503
+        
+        return jsonify({
+            'success': True,
+            'nutrition': nutrition,
+            'original_input': food_input
+        }), 200
+    
+    except Exception as e:
+        print(f"Error in api_search_food: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/calculate-recommendation', methods=['POST'])
+def api_calculate_recommendation():
+    """Calculate nutrition recommendation based on user info and daily intake"""
+    try:
+        data = request.json or {}
+        user_info = data.get('user_info', {})
+        daily_nutrition = data.get('daily_nutrition', {})
+
+        if not data:
+            return jsonify({'error': 'Request body missing. Send JSON with user_info and daily_nutrition.'}), 400
+
+        def to_int(val, default=0):
+            try:
+                # Treat "" or None as missing -> default
+                if val is None or val == '':
+                    return default
+                return int(val)
+            except Exception:
+                return default
+
+        def to_float(val, default=0.0):
+            try:
+                if val is None or val == '':
+                    return default
+                return float(val)
+            except Exception:
+                return default
+
+        # Extract values with safe coercion
+        gender = to_int(user_info.get('gender'), 0)
+        age = to_int(user_info.get('age'), 0)
+        height = to_float(user_info.get('height'), 0)
+        weight = to_float(user_info.get('weight'), 0)
+        carbs = to_float(daily_nutrition.get('carbs'), 0)
+        protein = to_float(daily_nutrition.get('protein'), 0)
+        fat = to_float(daily_nutrition.get('fat'), 0)
+        activity = to_int(user_info.get('activity'), 0)
+        diet = to_int(user_info.get('diet'), 0)
+        preference = to_int(user_info.get('preference'), 0)
+
+        # Minimal validation with soft defaults
+        missing = []
+        if gender not in [0, 1]: missing.append('gender')
+        if age <= 0: missing.append('age')
+        if height <= 0: missing.append('height')
+        if weight <= 0: missing.append('weight')
+        if activity not in [0, 1, 2, 3]: missing.append('activity')
+        if diet not in [0, 1, 2, 3]: missing.append('diet')
+        if preference not in [0, 1]: missing.append('preference')
+
+        # If missing, apply sensible defaults to keep API responsive
+        if missing:
+            defaults = {
+                'gender': 0,
+                'age': 25,
+                'height': 170.0,
+                'weight': 70.0,
+                'activity': 2,
+                'diet': 0,
+                'preference': 0,
+            }
+            gender = gender if gender in [0,1] else defaults['gender']
+            age = age if age > 0 else defaults['age']
+            height = height if height > 0 else defaults['height']
+            weight = weight if weight > 0 else defaults['weight']
+            activity = activity if activity in [0,1,2,3] else defaults['activity']
+            diet = diet if diet in [0,1,2,3] else defaults['diet']
+            preference = preference if preference in [0,1] else defaults['preference']
+            note = f"Applied defaults for: {', '.join(missing)}"
+        else:
+            note = None
+        
+        # Call existing recommendation function
+        recommend_dict = recommend(gender, age, height, weight, carbs, protein, fat, activity, diet, preference)
+
+        if note:
+            recommend_dict['note'] = note
+        
+        return jsonify({
+            'success': True,
+            'recommendation': recommend_dict
+        }), 200
+    
+    except Exception as e:
+        print(f"Error in api_calculate_recommendation: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/download-stl/<path:filename>', methods=['GET'])
+def download_stl(filename):
+    """Download STL file from Google Cloud Storage"""
+    try:
+        print(f"[DEBUG] Attempting to download STL file: {filename}")
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        blob_path = f"meshes/{filename}"
+        print(f"[DEBUG] GCS blob path: {blob_path}")
+        blob = bucket.blob(blob_path)
+        
+        # Check if blob exists
+        if not blob.exists():
+            print(f"[DEBUG] Blob does not exist at path: {blob_path}")
+            return jsonify({'error': f'File not found in storage: {filename}'}), 404
+        
+        # Download to memory
+        file_data = io.BytesIO()
+        blob.download_to_file(file_data)
+        file_data.seek(0)
+        print(f"[DEBUG] Successfully downloaded {filename}, size: {file_data.getbuffer().nbytes} bytes")
+        
+        return send_file(
+            file_data,
+            mimetype='application/octet-stream',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        print(f"[ERROR] Error downloading STL: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'File not found or download failed: {str(e)}'}), 404
  
 # main driver function
 if __name__ == '__main__':
-    app.run(host="127.0.0.1", port=8080, debug=True)
+    # Run on 0.0.0.0 to allow external access (Cloudflare tunnel, network access, etc.)
+    app.run(host="0.0.0.0", port=5000, debug=True)

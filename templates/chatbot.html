@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/base.css">
+    <link rel="stylesheet" href="/static/chatbot.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELEVATEFOODS - Food Chatbot</title>
+</head>
+
+<body>
+    <header>
+        <div class="brand">ELEVATEFOODS <span class="badge">Beta</span></div>
+    </header>
+
+    <main>
+        <div class="chatbot-container">
+            <!-- Sidebar with nutrition summary -->
+            <aside class="nutrition-sidebar">
+                <div class="sidebar-panel">
+                    <h3>Today's Intake</h3>
+                    <div class="nutrition-summary">
+                        <div class="nutrition-item">
+                            <span class="label">Carbs</span>
+                            <span class="value" id="carbs-total">0</span>
+                            <span class="unit">g</span>
+                        </div>
+                        <div class="nutrition-item">
+                            <span class="label">Protein</span>
+                            <span class="value" id="protein-total">0</span>
+                            <span class="unit">g</span>
+                        </div>
+                        <div class="nutrition-item">
+                            <span class="label">Fat</span>
+                            <span class="value" id="fat-total">0</span>
+                            <span class="unit">g</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button id="undo-btn" class="btn-secondary" style="flex: 1; padding: 8px; font-size: 12px;" title="Undo last food entry">↶ Undo</button>
+                        <button id="clear-btn" class="btn-secondary" style="flex: 1; padding: 8px; font-size: 12px;" title="Clear all food entries">✕ Clear All</button>
+                    </div>
+                </div>
+
+                <div class="sidebar-panel">
+                    <h3>Your Info</h3>
+                    <div class="profile-controls">
+                        <label class="profile-label">Saved Profiles</label>
+                        <div class="profile-row">
+                            <select id="profile-select">
+                                <option value="">Select...</option>
+                            </select>
+                            <button type="button" id="rename-profile-btn" class="btn-secondary profile-btn" title="Rename selected profile">Rename</button>
+                            <button type="button" id="delete-profile-btn" class="btn-secondary profile-btn" title="Delete selected profile">Delete</button>
+                        </div>
+                        <button type="button" id="save-profile-btn" class="btn-secondary" title="Save current answers as a profile">Save Profile</button>
+                    </div>
+                    <form id="user-info-form" class="user-info-form">
+                        <div class="form-field">
+                            <label>Gender</label>
+                            <div class="radio-group-compact">
+                                <label><input type="radio" name="gender" value="0"> M</label>
+                                <label><input type="radio" name="gender" value="1"> F</label>
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label>Age</label>
+                            <input type="number" name="age" placeholder="Years">
+                        </div>
+                        <div class="form-field">
+                            <label>Height</label>
+                            <input type="number" name="height" placeholder="cm">
+                        </div>
+                        <div class="form-field">
+                            <label>Weight</label>
+                            <input type="number" name="weight" placeholder="kg">
+                        </div>
+                        <div class="form-field">
+                            <label>ACTIVITY LEVEL</label>
+                            <select name="activity">
+                                <option value="">Select...</option>
+                                <option value="0">Sedentary</option>
+                                <option value="1">Low Active</option>
+                                <option value="2">Active</option>
+                                <option value="3">Very Active</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label>Diet Plan</label>
+                            <select name="diet">
+                                <option value="">Select...</option>
+                                <option value="0">Balanced</option>
+                                <option value="1">Low Fat</option>
+                                <option value="2">Low Carb</option>
+                                <option value="3">High Protein</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label>Preference</label>
+                            <div class="radio-group-compact">
+                                <label><input type="radio" name="preference" value="0"> Meat-based</label>
+                                <label><input type="radio" name="preference" value="1"> Plant-based</label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <button id="analyze-btn" class="btn-primary" style="width: 100%; margin-top: 20px;">Get Recommendations</button>
+            </aside>
+
+            <!-- Main chat area -->
+            <section class="chatbot-main">
+                <div class="chat-header">
+                    <h2>Food Intake Tracker</h2>
+                    <p>Tell me what you eat and I'll track your nutrition</p>
+                </div>
+
+                <div class="messages-container" id="messages-container">
+                    <div class="message bot-message">
+                        <div class="message-content">
+                            <p>Hello! 👋 I'm your nutrition assistant. Here's how to use me:</p>
+                            <p><strong>Step 1:</strong> Fill in your personal info on the left (optional for tracking, required for recommendations)</p>
+                            <p><strong>Step 2:</strong> Tell me what you ate! Examples: "100g chicken breast" or "1 medium apple"</p>
+                            <p><strong>Step 3:</strong> Click "Get Recommendations" to see your nutrition plan</p>
+                            <p>Let's get started! 🍽️</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <form id="food-input-form" class="food-input-form">
+                        <input 
+                            type="text" 
+                            id="food-input" 
+                            placeholder="What did you eat? (e.g., 100g chicken breast, 1 apple)"
+                            autocomplete="off"
+                        >
+                        <button type="submit" class="btn-send">Send</button>
+                    </form>
+                    <div class="input-hint">Press Enter or click Send</div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/static/chatbot.js"></script>
+</body>
+
+</html>
