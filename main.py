@@ -4,7 +4,6 @@ from google.auth.exceptions import DefaultCredentialsError
 import numpy as np
 from scipy.optimize import minimize, NonlinearConstraint, nnls, linprog
 from itertools import combinations
-from stl import mesh
 import os
 import json
 import io
@@ -19,6 +18,15 @@ if os.path.exists(json_path):
 
 # Diagnostics toggle (optional): set env DIAG_MODE=1 to include server-side errors in API responses
 DIAG_MODE = os.getenv("DIAG_MODE", "0") not in ["0", "false", "False", ""]
+
+# Mesh generation mode and solution limits for memory/time-constrained environments (e.g., Render)
+# MESH_MODE: 'all' (default) | 'first' (only first solution) | 'none' (disable STL generation)
+MESH_MODE = os.getenv("MESH_MODE", "all").strip().lower()
+# MAX_SOLUTIONS: cap how many solution options we compute/return
+try:
+    MAX_SOLUTIONS = max(1, int(os.getenv("MAX_SOLUTIONS", "2")))
+except Exception:
+    MAX_SOLUTIONS = 2
  
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = "./static/uploads"
@@ -401,9 +409,19 @@ def mesh_generation(name, weight, density): #g/cm3
     # print(name, weight, density, weight / density, x, y, z)
     if (x == 0 or y == 0 or z == 0): return 0, 0, 0
     # print(x, y, z)
+    # If mesh generation is disabled, just return dimensions without creating STL
+    if MESH_MODE == 'none':
+        return x, y, z
 
-    vertices = np.array([\
-        [0, 0, 0],
+    # Lazy import to avoid loading numpy-stl unless needed
+    try:
+        from stl import mesh as stl_mesh
+    except Exception as e:
+        print(f"[WARN] Failed to import numpy-stl: {e}. Skipping STL generation.")
+        return x, y, z
+
+    vertices = np.array([[
+        0, 0, 0],
         [x, 0, 0],
         [x, y, 0],
         [0, y, 0],
@@ -411,9 +429,9 @@ def mesh_generation(name, weight, density): #g/cm3
         [x, 0, z],
         [x, y, z],
         [0, y, z]])
-    
-    faces = np.array([\
-        [0,3,1],
+
+    faces = np.array([[
+        0,3,1],
         [1,3,2],
         [0,4,7],
         [0,7,3],
@@ -426,18 +444,21 @@ def mesh_generation(name, weight, density): #g/cm3
         [0,1,5],
         [0,5,4]])
 
-    cube = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
-    for i, f in enumerate(faces):
-        for j in range(3):
-            cube.vectors[i][j] = vertices[f[j],:]
+    try:
+        cube = stl_mesh.Mesh(np.zeros(faces.shape[0], dtype=stl_mesh.Mesh.dtype))
+        for i, f in enumerate(faces):
+            for j in range(3):
+                cube.vectors[i][j] = vertices[f[j],:]
 
-    import tempfile
-    temp_dir = tempfile.gettempdir()
-    tmp_path = os.path.join(temp_dir, name)
-    blob_path = f"meshes/{name}"
-    cube.save(tmp_path)
-    upload_to_gcs(bucket_name, tmp_path, blob_path)
-    os.remove(tmp_path)
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        tmp_path = os.path.join(temp_dir, name)
+        blob_path = f"meshes/{name}"
+        cube.save(tmp_path)
+        upload_to_gcs(bucket_name, tmp_path, blob_path)
+        os.remove(tmp_path)
+    except Exception as e:
+        print(f"[WARN] STL generation/upload failed for {name}: {e}")
 
     return x, y, z
 
@@ -529,6 +550,8 @@ def recommend(gender, age, height, weight, carbohydrate, protein, fat, activity,
         solutions.sort(key=lambda x: x[2])
         print(f"\n=== Found {len(solutions)} valid solutions ===")
     
+    # Limit number of solutions to avoid long runtimes / memory use
+    solutions = solutions[:MAX_SOLUTIONS]
     results = []
 
     for index in range(len(solutions)):
@@ -543,9 +566,12 @@ def recommend(gender, age, height, weight, carbohydrate, protein, fat, activity,
             carbohydrate_supplement += amounts[i] * W[indices[i]][0]
             protein_supplement += amounts[i] * W[indices[i]][1]
             fat_supplement += amounts[i] * W[indices[i]][2]
-            x, y, z = mesh_generation(mesh_name, amounts[i], density[indices[i]])
+            # Decide whether to generate STL based on MESH_MODE
+            generate_mesh = (MESH_MODE == 'all') or (MESH_MODE == 'first' and index == 0)
+            x, y, z = mesh_generation(mesh_name, amounts[i], density[indices[i]]) if generate_mesh else calculate_cube_dimension(amounts[i] / density[indices[i]])
+            mesh_field = mesh_name if generate_mesh and x and y and z and MESH_MODE != 'none' else ''
             if x and y and z:
-                material_mesh_list.append({'name': name[indices[i]], 'mesh': mesh_name, 'gram': amounts[i], 'x': round(x, 2), 'y': round(y, 2), 'z': round(z, 2)})
+                material_mesh_list.append({'name': name[indices[i]], 'mesh': mesh_field, 'gram': amounts[i], 'x': round(x, 2), 'y': round(y, 2), 'z': round(z, 2)})
         results.append((material_mesh_list, round(carbohydrate_supplement, 2), round(protein_supplement, 2), round(fat_supplement, 2)))            
 
     # print(results)
