@@ -539,66 +539,79 @@ Your daily totals have been updated. Keep tracking!
                     foodList = '<li>No specific recommendations at this time</li>';
                 }
 
-                    const supplementInfo = `
-    <div style="margin-top: 8px; padding: 8px; background: #ffffff; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
-<div style="margin-top: 8px; padding: 8px; background: rgba(255, 122, 61, 0.05); border-radius: 6px; font-size: 12px;">
-    <strong>Supplement Totals:</strong> Carbs: ${carbSup}g | Protein: ${proteinSup}g | Fat: ${fatSup}g
+                const supplementInfo = `
+<div style="margin-top: 12px; padding: 10px; background: #f0f0f0; border-left: 3px solid var(--accent); border-radius: 4px; font-size: 12px;">
+    <strong>Supplement Totals:</strong><br>
+    Carbs: <strong>${carbSup}g</strong> | Protein: <strong>${proteinSup}g</strong> | Fat: <strong>${fatSup}g</strong>
 </div>`;
 
                 allSolutionsHTML += `
-<div style="margin: 12px 0; padding: 12px; background: #ffffff; border: 1px solid var(--border); border-radius: 8px;">
-    <div style="font-weight: 600; margin-bottom: 8px; color: var(--accent);">Solution ${index + 1}</div>
-    <ul style="margin: 4px 0; padding-left: 20px; font-size: 13px;">
-        ${foodList}
-    </ul>
+<div style="margin: 16px 0; padding: 14px; background: #ffffff; border: 2px solid var(--accent); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+    <div style="font-weight: 700; margin-bottom: 12px; color: var(--accent); font-size: 15px;">💡 Option ${index + 1}</div>
+    <div style="margin-bottom: 12px;">
+        <div style="font-weight: 600; font-size: 13px; margin-bottom: 8px; color: var(--text);">Recommended Foods:</div>
+        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-secondary);">
+            ${foodList}
+        </ul>
+    </div>
     ${supplementInfo}
 </div>`;
             });
         } else {
-            allSolutionsHTML = '<div style="padding: 12px; background: #ffffff; border: 1px solid var(--border); border-radius: 8px;">No specific food recommendations at this time</div>';
+            allSolutionsHTML = '<div style="padding: 14px; background: #ffffff; border: 1px solid var(--border); border-radius: 8px; text-align: center; color: var(--muted);">No specific food recommendations at this time</div>';
         }
 
         return `
-📊 <strong>Your Nutrition Recommendation</strong>
+📊 <strong style="font-size: 16px;">Your Nutrition Recommendation</strong>
 
-<div style="margin: 12px 0; padding: 12px; background: #ffffff; border: 1px solid var(--border); border-radius: 8px;">
-    <div style="font-weight: 600; margin-bottom: 8px;">Daily Calorie Target: ${rec.calories} kcal</div>
-    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-        <thead>
-            <tr style="border-bottom: 2px solid var(--border);">
-                <th style="padding: 8px; text-align: left;">Nutrient</th>
-                <th style="padding: 8px; text-align: right;">Target</th>
-                <th style="padding: 8px; text-align: right;">Have</th>
-                <th style="padding: 8px; text-align: right;">Need</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr style="border-bottom: 1px solid var(--border);">
-                <td style="padding: 8px;">Carbs</td>
-                <td style="padding: 8px; text-align: right; font-weight: 600;">${rec.carbohydrate_intake}g</td>
-                <td style="padding: 8px; text-align: right;">${this.dailyNutrition.carbs}g</td>
-                <td style="padding: 8px; text-align: right; color: ${rec.carbohydrate_needed < 0 ? '#22c55e' : 'var(--accent)'};">${rec.carbohydrate_needed}g</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--border);">
-                <td style="padding: 8px;">Protein</td>
-                <td style="padding: 8px; text-align: right; font-weight: 600;">${rec.protein_intake}g</td>
-                <td style="padding: 8px; text-align: right;">${this.dailyNutrition.protein}g</td>
-                <td style="padding: 8px; text-align: right; color: ${rec.protein_needed < 0 ? '#22c55e' : 'var(--accent)'};">${rec.protein_needed}g</td>
-            </tr>
-            <tr>
-                <td style="padding: 8px;">Fat</td>
-                <td style="padding: 8px; text-align: right; font-weight: 600;">${rec.fat_intake}g</td>
-                <td style="padding: 8px; text-align: right;">${this.dailyNutrition.fat}g</td>
-                <td style="padding: 8px; text-align: right; color: ${rec.fat_needed < 0 ? '#22c55e' : 'var(--accent)'};">${rec.fat_needed}g</td>
-            </tr>
-        </tbody>
-    </table>
+<div style="margin: 14px 0; padding: 14px; background: #ffffff; border: 1px solid var(--border); border-radius: 10px;">
+    <div style="margin-bottom: 14px;">
+        <div style="font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Daily Energy Goal</div>
+        <div style="font-size: 20px; font-weight: 700; color: var(--accent);">${rec.calories} kcal</div>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+                <tr style="background: #f9fafb; border-bottom: 2px solid var(--border);">
+                    <th style="padding: 10px 8px; text-align: left; font-weight: 600; color: var(--text);">Nutrient</th>
+                    <th style="padding: 10px 8px; text-align: right; font-weight: 600; color: var(--text);">Target</th>
+                    <th style="padding: 10px 8px; text-align: right; font-weight: 600; color: var(--text);">Current</th>
+                    <th style="padding: 10px 8px; text-align: right; font-weight: 600; color: var(--text);">Need</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 10px 8px;">🥔 Carbs</td>
+                    <td style="padding: 10px 8px; text-align: right; font-weight: 600;">${rec.carbohydrate_intake}g</td>
+                    <td style="padding: 10px 8px; text-align: right;">${this.dailyNutrition.carbs}g</td>
+                    <td style="padding: 10px 8px; text-align: right; font-weight: 600; color: ${rec.carbohydrate_needed <= 0 ? '#22c55e' : 'var(--accent)'};">${rec.carbohydrate_needed}g</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 10px 8px;">🍗 Protein</td>
+                    <td style="padding: 10px 8px; text-align: right; font-weight: 600;">${rec.protein_intake}g</td>
+                    <td style="padding: 10px 8px; text-align: right;">${this.dailyNutrition.protein}g</td>
+                    <td style="padding: 10px 8px; text-align: right; font-weight: 600; color: ${rec.protein_needed <= 0 ? '#22c55e' : 'var(--accent)'};">${rec.protein_needed}g</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px 8px;">🥑 Fat</td>
+                    <td style="padding: 10px 8px; text-align: right; font-weight: 600;">${rec.fat_intake}g</td>
+                    <td style="padding: 10px 8px; text-align: right;">${this.dailyNutrition.fat}g</td>
+                    <td style="padding: 10px 8px; text-align: right; font-weight: 600; color: ${rec.fat_needed <= 0 ? '#22c55e' : 'var(--accent)'};">${rec.fat_needed}g</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<strong>Suggested Food Combinations:</strong>
-${allSolutionsHTML}
+<div style="margin: 14px 0;">
+    <div style="font-weight: 600; color: var(--text); font-size: 14px; margin-bottom: 10px;">🍽️ Suggested Food Combinations</div>
+    ${allSolutionsHTML}
+</div>
 
-Keep tracking your meals to reach your targets! 🎯
+<div style="padding: 12px; background: rgba(34, 197, 94, 0.08); border-left: 4px solid #22c55e; border-radius: 6px; font-size: 13px; color: var(--text-secondary);">
+    <strong style="color: #22c55e;">✓ Keep tracking</strong> your meals to reach your daily targets! 🎯
+</div>
         `;
     }
 
