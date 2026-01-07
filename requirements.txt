@@ -1,8 +1,8 @@
-Flask
-requests
-numpy
-scipy
-numpy-stl
-google-cloud-storage
-google-auth
-gunicorn
+Flask==3.0.2
+requests==2.31.0
+numpy==1.26.4
+scipy==1.10.1
+numpy-stl==3.1.1
+google-cloud-storage==2.16.0
+google-auth==2.25.2
+gunicorn==21.2.0

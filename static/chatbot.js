@@ -464,10 +464,21 @@ Your daily totals have been updated. Keep tracking!
                 })
             });
 
-            const result = await response.json();
+            let result;
+            if (response.headers.get('content-type')?.includes('application/json')) {
+                result = await response.json();
+            } else {
+                const text = await response.text();
+                if (!response.ok) {
+                    this.updateMessage(loadingMsg, `❌ Error (${response.status}): ${text?.slice(0, 300) || 'Unable to generate recommendation'}`);
+                    return;
+                }
+                // Fallback wrapper if server returned plain text success
+                result = { recommendation: null, raw: text };
+            }
 
             if (!response.ok) {
-                this.updateMessage(loadingMsg, `❌ Error: ${result.error || 'Unable to generate recommendation'}`);
+                this.updateMessage(loadingMsg, `❌ Error: ${result?.error || 'Unable to generate recommendation'}`);
                 return;
             }
 
