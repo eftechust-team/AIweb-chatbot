@@ -16,6 +16,9 @@ from datagov_api import get_datagov_client
 json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "food-ai-455507-e2a9c115814e.json"))
 if os.path.exists(json_path):
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = json_path
+
+# Diagnostics toggle (optional): set env DIAG_MODE=1 to include server-side errors in API responses
+DIAG_MODE = os.getenv("DIAG_MODE", "0") not in ["0", "false", "False", ""]
  
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = "./static/uploads"
@@ -807,9 +810,12 @@ def api_calculate_recommendation():
                     'results': []
                 }
                 note = 'Generated minimal recommendation (optimization failed)'
-                os.environ.get('DIAG_MODE') and recommend_dict.update({'error': str(rec_err)})
+                if DIAG_MODE:
+                    recommend_dict.update({'error': str(rec_err)})
             except Exception as fb_err:
                 print(f"Fallback generation failed: {fb_err}")
+                if DIAG_MODE:
+                    return jsonify({'error': f'Fallback failed: {fb_err}'}), 500
                 raise rec_err
 
         if note:
@@ -822,7 +828,9 @@ def api_calculate_recommendation():
     
     except Exception as e:
         print(f"Error in api_calculate_recommendation: {e}")
-        return jsonify({'error': str(e)}), 500
+        if DIAG_MODE:
+            return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Recommendation failed. Please try again later.'}), 500
 
 @app.route('/download-stl/<path:filename>', methods=['GET'])
 def download_stl(filename):
