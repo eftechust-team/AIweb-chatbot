@@ -27,6 +27,9 @@ try:
     MAX_SOLUTIONS = max(1, int(os.getenv("MAX_SOLUTIONS", "2")))
 except Exception:
     MAX_SOLUTIONS = 2
+
+# Mesh storage backend: 'gcs' (default) to upload to Google Cloud Storage, or 'local' to keep files in /tmp and serve directly
+MESH_STORAGE = os.getenv("MESH_STORAGE", "gcs").strip().lower()
  
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = "./static/uploads"
@@ -455,8 +458,17 @@ def mesh_generation(name, weight, density): #g/cm3
         tmp_path = os.path.join(temp_dir, name)
         blob_path = f"meshes/{name}"
         cube.save(tmp_path)
-        upload_to_gcs(bucket_name, tmp_path, blob_path)
-        os.remove(tmp_path)
+
+        if MESH_STORAGE == 'gcs':
+            upload_to_gcs(bucket_name, tmp_path, blob_path)
+            # Remove local temp file after upload
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+        else:
+            # Keep local file for direct download via /download-stl
+            print(f"[INFO] Stored STL locally at {tmp_path}")
     except Exception as e:
         print(f"[WARN] STL generation/upload failed for {name}: {e}")
 
@@ -863,29 +875,47 @@ def download_stl(filename):
     """Download STL file from Google Cloud Storage"""
     try:
         print(f"[DEBUG] Attempting to download STL file: {filename}")
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(bucket_name)
-        blob_path = f"meshes/{filename}"
-        print(f"[DEBUG] GCS blob path: {blob_path}")
-        blob = bucket.blob(blob_path)
-        
-        # Check if blob exists
-        if not blob.exists():
-            print(f"[DEBUG] Blob does not exist at path: {blob_path}")
-            return jsonify({'error': f'File not found in storage: {filename}'}), 404
-        
-        # Download to memory
-        file_data = io.BytesIO()
-        blob.download_to_file(file_data)
-        file_data.seek(0)
-        print(f"[DEBUG] Successfully downloaded {filename}, size: {file_data.getbuffer().nbytes} bytes")
-        
-        return send_file(
-            file_data,
-            mimetype='application/octet-stream',
-            as_attachment=True,
-            download_name=filename
-        )
+        if MESH_STORAGE == 'local':
+            import tempfile
+            temp_dir = tempfile.gettempdir()
+            local_path = os.path.join(temp_dir, filename)
+            if not os.path.exists(local_path):
+                print(f"[DEBUG] Local STL not found at {local_path}")
+                return jsonify({'error': f'File not found (local): {filename}'}), 404
+            with open(local_path, 'rb') as f:
+                file_data = io.BytesIO(f.read())
+            file_data.seek(0)
+            print(f"[DEBUG] Serving local STL {filename}, size: {file_data.getbuffer().nbytes} bytes")
+            return send_file(
+                file_data,
+                mimetype='application/octet-stream',
+                as_attachment=True,
+                download_name=filename
+            )
+        else:
+            storage_client = storage.Client()
+            bucket = storage_client.bucket(bucket_name)
+            blob_path = f"meshes/{filename}"
+            print(f"[DEBUG] GCS blob path: {blob_path}")
+            blob = bucket.blob(blob_path)
+            
+            # Check if blob exists
+            if not blob.exists():
+                print(f"[DEBUG] Blob does not exist at path: {blob_path}")
+                return jsonify({'error': f'File not found in storage: {filename}'}), 404
+            
+            # Download to memory
+            file_data = io.BytesIO()
+            blob.download_to_file(file_data)
+            file_data.seek(0)
+            print(f"[DEBUG] Successfully downloaded {filename}, size: {file_data.getbuffer().nbytes} bytes")
+            
+            return send_file(
+                file_data,
+                mimetype='application/octet-stream',
+                as_attachment=True,
+                download_name=filename
+            )
     except Exception as e:
         print(f"[ERROR] Error downloading STL: {e}")
         import traceback
