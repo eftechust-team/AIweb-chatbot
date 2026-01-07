@@ -604,8 +604,8 @@ Your daily totals have been updated. Keep tracking!
     </div>
 </div>
 
-<div style="margin: 14px 0;">
-    <div style="font-weight: 600; color: var(--text); font-size: 14px; margin-bottom: 10px;">🍽️ Suggested Food Combinations</div>
+<div style="margin: 18px 0 0 0; padding-top: 16px; border-top: 2px solid var(--border);">
+    <div style="font-weight: 600; color: var(--text); font-size: 14px; margin-bottom: 12px;">🍽️ Suggested Food Combinations</div>
     ${allSolutionsHTML}
 </div>
 
