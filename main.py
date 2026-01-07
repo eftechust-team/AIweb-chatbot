@@ -604,10 +604,19 @@ def recommend(gender, age, height, weight, carbohydrate, protein, fat, activity,
             carbohydrate_supplement += amounts[i] * W[indices[i]][0]
             protein_supplement += amounts[i] * W[indices[i]][1]
             fat_supplement += amounts[i] * W[indices[i]][2]
+            # Record manifest for on-demand regeneration, regardless of generation mode
+            try:
+                manifest = _load_manifest()
+                manifest[mesh_name] = { 'amount': float(amounts[i]), 'density': float(density[indices[i]]) }
+                _save_manifest(manifest)
+            except Exception as mf_err:
+                print(f"[WARN] Failed to update manifest for {mesh_name}: {mf_err}")
+
             # Decide whether to generate STL based on MESH_MODE
             generate_mesh = (MESH_MODE == 'all') or (MESH_MODE == 'first' and index == 0)
             x, y, z = mesh_generation(mesh_name, amounts[i], density[indices[i]]) if generate_mesh else calculate_cube_dimension(amounts[i] / density[indices[i]])
-            mesh_field = mesh_name if generate_mesh and x and y and z and MESH_MODE != 'none' else ''
+            # Show download links when meshes are allowed; on-demand regen will be used if file is missing
+            mesh_field = mesh_name if MESH_MODE != 'none' and x and y and z else ''
             if x and y and z:
                 material_mesh_list.append({'name': name[indices[i]], 'mesh': mesh_field, 'gram': amounts[i], 'x': round(x, 2), 'y': round(y, 2), 'z': round(z, 2)})
         results.append((material_mesh_list, round(carbohydrate_supplement, 2), round(protein_supplement, 2), round(fat_supplement, 2)))            
