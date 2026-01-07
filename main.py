@@ -30,6 +30,28 @@ except Exception:
 
 # Mesh storage backend: 'gcs' (default) to upload to Google Cloud Storage, or 'local' to keep files in /tmp and serve directly
 MESH_STORAGE = os.getenv("MESH_STORAGE", "gcs").strip().lower()
+
+def _manifest_path():
+    import tempfile
+    return os.path.join(tempfile.gettempdir(), "meshes_manifest.json")
+
+def _load_manifest():
+    try:
+        path = _manifest_path()
+        if os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"[WARN] Failed to load mesh manifest: {e}")
+    return {}
+
+def _save_manifest(manifest):
+    try:
+        path = _manifest_path()
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(manifest, f)
+    except Exception as e:
+        print(f"[WARN] Failed to save mesh manifest: {e}")
  
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = "./static/uploads"
@@ -469,6 +491,10 @@ def mesh_generation(name, weight, density): #g/cm3
         else:
             # Keep local file for direct download via /download-stl
             print(f"[INFO] Stored STL locally at {tmp_path}")
+            # Record manifest to allow on-demand regeneration
+            manifest = _load_manifest()
+            manifest[name] = { 'amount': float(weight), 'density': float(density) }
+            _save_manifest(manifest)
     except Exception as e:
         print(f"[WARN] STL generation/upload failed for {name}: {e}")
 
@@ -880,8 +906,21 @@ def download_stl(filename):
             temp_dir = tempfile.gettempdir()
             local_path = os.path.join(temp_dir, filename)
             if not os.path.exists(local_path):
-                print(f"[DEBUG] Local STL not found at {local_path}")
-                return jsonify({'error': f'File not found (local): {filename}'}), 404
+                print(f"[DEBUG] Local STL not found at {local_path}, attempting regeneration from manifest")
+                # Try on-demand regeneration if manifest has info
+                manifest = _load_manifest()
+                meta = manifest.get(filename)
+                if meta and 'amount' in meta and 'density' in meta:
+                    try:
+                        # Regenerate STL file
+                        mesh_generation(filename, float(meta['amount']), float(meta['density']))
+                    except Exception as regen_err:
+                        print(f"[WARN] Regeneration failed: {regen_err}")
+                else:
+                    print("[DEBUG] No manifest entry for this file; cannot regenerate")
+                # Re-check existence after regeneration attempt
+                if not os.path.exists(local_path):
+                    return jsonify({'error': f'File not found (local): {filename}'}), 404
             with open(local_path, 'rb') as f:
                 file_data = io.BytesIO(f.read())
             file_data.seek(0)
@@ -921,6 +960,10 @@ def download_stl(filename):
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'File not found or download failed: {str(e)}'}), 404
+
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'ok'}), 200
  
 # main driver function
 if __name__ == '__main__':
