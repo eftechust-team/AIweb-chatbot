@@ -781,8 +781,36 @@ def api_calculate_recommendation():
         else:
             note = None
         
-        # Call existing recommendation function
-        recommend_dict = recommend(gender, age, height, weight, carbs, protein, fat, activity, diet, preference)
+        # Call existing recommendation function with a robust fallback
+        try:
+            recommend_dict = recommend(gender, age, height, weight, carbs, protein, fat, activity, diet, preference)
+        except Exception as rec_err:
+            # Fallback: compute targets and needs without optimization/meshes
+            try:
+                rmr = calculate_rmr(weight, height, age, gender)
+                calories = calculate_daily_calories(rmr, activity)
+                diet_scale = [
+                    (0.50 / 4.1, 0.20 / 4.1, 0.30 / 8.8),  # balanced
+                    (0.60 / 4.1, 0.20 / 4.1, 0.20 / 8.8),  # low fat
+                    (0.20 / 4.1, 0.30 / 4.1, 0.50 / 8.8),  # low carbs
+                    (0.28 / 4.1, 0.39 / 4.1, 0.33 / 8.8),  # high protein
+                ]
+                carbohydrate_intake, protein_intake, fat_intake = (calories * i for i in diet_scale[diet])
+                recommend_dict = {
+                    'calories': round(calories, 2),
+                    'carbohydrate_intake': round(carbohydrate_intake, 2),
+                    'protein_intake': round(protein_intake, 2),
+                    'fat_intake': round(fat_intake, 2),
+                    'carbohydrate_needed': round(carbohydrate_intake - carbs, 2),
+                    'protein_needed': round(protein_intake - protein, 2),
+                    'fat_needed': round(fat_intake - fat, 2),
+                    'results': []
+                }
+                note = 'Generated minimal recommendation (optimization failed)'
+                os.environ.get('DIAG_MODE') and recommend_dict.update({'error': str(rec_err)})
+            except Exception as fb_err:
+                print(f"Fallback generation failed: {fb_err}")
+                raise rec_err
 
         if note:
             recommend_dict['note'] = note
