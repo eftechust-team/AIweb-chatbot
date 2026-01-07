@@ -1,0 +1,8 @@
+Flask
+requests
+numpy
+scipy
+numpy-stl
+google-cloud-storage
+google-auth
+gunicorn

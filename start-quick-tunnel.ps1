@@ -4,7 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$root = "C:\Users\x1\OneDrive\Desktop\elevatefoods\From Siyu\Food_AI-master"
+$root = "C:\Users\x1\OneDrive\Desktop\elevatefoods\AI-recipe-chatbot"
 Set-Location $root
 
 $python = Join-Path $root ".venv\\Scripts\\python.exe"
