@@ -539,14 +539,14 @@ Your daily totals have been updated. Keep tracking!
                     foodList = '<li>No specific recommendations at this time</li>';
                 }
 
-                // Supplement totals for this solution
-                const supplementInfo = `
+                    const supplementInfo = `
+    <div style="margin-top: 8px; padding: 8px; background: #ffffff; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
 <div style="margin-top: 8px; padding: 8px; background: rgba(255, 122, 61, 0.05); border-radius: 6px; font-size: 12px;">
     <strong>Supplement Totals:</strong> Carbs: ${carbSup}g | Protein: ${proteinSup}g | Fat: ${fatSup}g
 </div>`;
 
                 allSolutionsHTML += `
-<div style="margin: 12px 0; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px;">
+<div style="margin: 12px 0; padding: 12px; background: #ffffff; border: 1px solid var(--border); border-radius: 8px;">
     <div style="font-weight: 600; margin-bottom: 8px; color: var(--accent);">Solution ${index + 1}</div>
     <ul style="margin: 4px 0; padding-left: 20px; font-size: 13px;">
         ${foodList}
@@ -555,13 +555,13 @@ Your daily totals have been updated. Keep tracking!
 </div>`;
             });
         } else {
-            allSolutionsHTML = '<div style="padding: 12px; background: var(--bg-secondary); border-radius: 8px;">No specific food recommendations at this time</div>';
+            allSolutionsHTML = '<div style="padding: 12px; background: #ffffff; border: 1px solid var(--border); border-radius: 8px;">No specific food recommendations at this time</div>';
         }
 
         return `
 📊 <strong>Your Nutrition Recommendation</strong>
 
-<div style="margin: 12px 0; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+<div style="margin: 12px 0; padding: 12px; background: #ffffff; border: 1px solid var(--border); border-radius: 8px;">
     <div style="font-weight: 600; margin-bottom: 8px;">Daily Calorie Target: ${rec.calories} kcal</div>
     <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
         <thead>
